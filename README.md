@@ -58,16 +58,3 @@ Build only what the demo shows. It's an iOS app in Expo Go on real iPhones, with
 | Share of challengers who finish | The app is actually motivating |
 | Doubters per challenger | Shows how far it spreads |
 | Fee revenue per challenge | The business works |
-
-## Risks and open questions
-
-| Risk | Plan |
-| --- | --- |
-| Friends betting real money on each other likely counts as gambling in most US states | Demo in sandbox only. For launch, Doubters pay a "dare fee" that goes to charity if they win, and only your own stake is real money (like stickK) |
-| Apple restricts real-money betting apps on the App Store | Fine for an Expo Go demo; for a real release, use the dare-fee model or get legal review first |
-| Whop's rules may not allow betting-style apps | Check Whop's acceptable-use policy before launch |
-| A native module sneaks in and breaks Expo Go | Install only with `npx expo install`, and test on a phone after each new package |
-| Revyl's simulator build is slow or fails | Start it in minute 10; if it isn't green by minute 45, drop Revyl from the pitch |
-| Webhook never arrives on stage | Test the full pay flow 3 times beforehand; keep a screen recording as backup |
-| Transfers fail because the sandbox balance is empty | Pre-fund the sandbox company; failed payouts show a Retry button |
-| Faked steps | The pedometer reads the phone's motion sensor, but the manual button can be abused; turn it off outside the demo |
