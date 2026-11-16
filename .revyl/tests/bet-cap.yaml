@@ -1,0 +1,41 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: 1a7391db-fa8d-4ba7-acdd-d9e5508b3c7b
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-15T16:50:22-08:00"
+    checksum: 20cfd973036073d80b6f2e17d70af8f3ac767650d302b0a8eb9c4f5d877635f3
+test:
+    metadata:
+        name: bet-cap
+        platform: ios
+        tags:
+            - smoke
+    build:
+        name: doubt-ios-preview
+    blocks:
+        - type: if
+          condition: A "Your name" text field is visible.
+          then:
+            - type: instructions
+              step_description: Type "Revyl" in the "Your name" field.
+            - type: instructions
+              step_description: Tap the "Continue" button.
+        - type: instructions
+          step_description: Tap "Load demo".
+        - type: manual
+          step_type: wait
+          step_description: "3"
+        - type: validation
+          step_description: The challenge board titled "10k steps today" is shown with challengers including Jake, Maya, Ali, Priya, Marcus and Sofia.
+        - type: instructions
+          step_description: Tap the "Maya" row.
+        - type: validation
+          step_description: A sheet titled "Doubt Maya" with an "Amount ($)" field is visible.
+        - type: instructions
+          step_description: Type "15" in the "Amount ($)" field.
+        - type: instructions
+          step_description: tap the yellow "Doubt Maya" button.
+        - type: validation
+          step_description: The error text "Max bet on Maya is $10" is visible.

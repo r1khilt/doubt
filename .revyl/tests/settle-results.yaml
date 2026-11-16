@@ -1,0 +1,42 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: df3f1fca-5b7a-419d-a7e3-89152db80583
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-15T16:50:24-08:00"
+    checksum: 8561caad709107ca9440d1175a25a5a6f4e043804ecfa4601425114784a07073
+test:
+    metadata:
+        name: settle-results
+        platform: ios
+        tags:
+            - smoke
+    build:
+        name: doubt-ios-preview
+    blocks:
+        - type: if
+          condition: A "Your name" text field is visible.
+          then:
+            - type: instructions
+              step_description: Type "Revyl" in the "Your name" field.
+            - type: instructions
+              step_description: Tap the "Continue" button.
+        - type: instructions
+          step_description: Tap "Load demo".
+        - type: manual
+          step_type: wait
+          step_description: "3"
+        - type: validation
+          step_description: The challenge board titled "10k steps today" is shown with a "Settle now" button.
+        - type: instructions
+          step_description: Tap the "Settle now" button.
+        - type: manual
+          step_type: wait
+          step_description: "5"
+        - type: instructions
+          step_description: Tap the "View results" button.
+        - type: validation
+          step_description: The screen shows the heading "Results" and the label "Total in".
+        - type: validation
+          step_description: The name "Maya" is visible on the Results screen.
