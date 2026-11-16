@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "doubters",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "ios": {
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.doubters.app"
@@ -29,7 +29,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#FFFFFF",
+          "backgroundColor": "#0B0B0C",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
@@ -56,6 +56,7 @@
         "projectId": "12f80d78-bda7-4175-8663-39137cecde5f"
       }
     },
-    "owner": "rikhiltanugula"
+    "owner": "rikhiltanugula",
+    "backgroundColor": "#0B0B0C"
   }
 }

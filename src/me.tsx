@@ -6,7 +6,15 @@ import { api } from "@convex/_generated/api";
 import { T } from "@/theme";
 import { Btn, Field, Txt } from "@/kit-b";
 
-type Me = { deviceId: string; name: string; setName: (name: string) => Promise<void> };
+export type Account = { deviceId: string; name: string };
+type Me = {
+  deviceId: string; // active account — key the app tree on this to re-render as that person
+  name: string;
+  accounts: Account[];
+  setName: (name: string) => Promise<void>;
+  switchAccount: (deviceId: string) => Promise<void>;
+  addAccount: (name: string) => Promise<void>;
+};
 const MeContext = createContext<Me | null>(null);
 
 export const useMe = () => {
@@ -21,9 +29,13 @@ export const store = Platform.OS === "web"
   : { get: SecureStore.getItemAsync, set: (k: string, v: string) => SecureStore.setItemAsync(k, v) };
 
 const randomId = () => Array.from({ length: 24 }, () => Math.floor(Math.random() * 36).toString(36)).join("");
+const save = (accounts: Account[], activeId: string) =>
+  Promise.all([store.set("accounts", JSON.stringify(accounts)), store.set("activeId", activeId)]).catch(() => {});
 
 export function MeProvider({ children }: { children: ReactNode }) {
-  const [me, setMe] = useState<{ deviceId: string; name: string } | null>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [firstRunId, setFirstRunId] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
@@ -31,21 +43,28 @@ export function MeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      let deviceId = await store.get("deviceId").catch(() => null);
-      if (!deviceId) {
-        deviceId = randomId();
-        await store.set("deviceId", deviceId).catch(() => {});
+      let list: Account[] = [];
+      try { list = JSON.parse((await store.get("accounts").catch(() => null)) ?? "[]"); } catch {}
+      let active = await store.get("activeId").catch(() => null);
+      if (!list.length) {
+        // Migrate the single-account storage from earlier builds.
+        const legacyId = await store.get("deviceId").catch(() => null);
+        const legacyName = await store.get("name").catch(() => null);
+        if (legacyId && legacyName) {
+          list = [{ deviceId: legacyId, name: legacyName }];
+          active = legacyId;
+          await save(list, legacyId);
+        } else setFirstRunId(legacyId ?? randomId());
       }
-      const name = await store.get("name").catch(() => null);
-      if (name) {
-        setMe({ deviceId, name });
-        ensure({ deviceId, name }).catch(() => {});
-      } else setMe({ deviceId, name: "" });
+      const current = list.find((a) => a.deviceId === active) ?? list[0];
+      if (current) ensure(current).catch(() => {});
+      setAccounts(list);
+      setActiveId(current?.deviceId ?? null);
       setLoaded(true);
     })();
   }, []);
 
-  if (!loaded || !me) {
+  if (!loaded) {
     return (
       <View style={{ flex: 1, backgroundColor: T.bg, justifyContent: "center" }}>
         <ActivityIndicator color={T.fg} />
@@ -53,39 +72,63 @@ export function MeProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  // Saves the name locally and on the server (used by first run and Settings).
-  const setName = async (raw: string) => {
+  const addAccount = async (raw: string, id = randomId()) => {
     const name = raw.trim();
     if (!name) return;
-    await ensure({ deviceId: me.deviceId, name });
-    await store.set("name", name).catch(() => {});
-    setMe({ ...me, name });
+    await ensure({ deviceId: id, name });
+    const list = [...accounts, { deviceId: id, name }];
+    setAccounts(list);
+    setActiveId(id);
+    await save(list, id);
   };
 
-  if (!me.name) {
-    const save = async () => {
+  const active = accounts.find((a) => a.deviceId === activeId);
+
+  if (!active) {
+    const create = async () => {
       if (!draft.trim()) return;
       setSaving(true);
       try {
-        await setName(draft);
+        await addAccount(draft, firstRunId || randomId());
       } finally {
         setSaving(false);
       }
     };
     return (
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: T.bg }}>
-        <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: T.pad, gap: 32 }}>
+        <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 20, gap: 32 }}>
           <View style={{ gap: 10 }}>
-            <Txt size={17} weight="600" style={{ letterSpacing: -0.3 }}>doubt</Txt>
-            <Txt size={34} weight="600" style={{ letterSpacing: -1, lineHeight: 38 }}>Prove them wrong.{"\n"}Get paid.</Txt>
+            <Txt size={17} weight="600" ls={-0.02}>doubt</Txt>
+            <Txt size={34} weight="600" ls={-0.03} style={{ lineHeight: 38 }}>Prove them wrong.{"\n"}Get paid.</Txt>
             <Txt muted>Stake money on your goal. Friends bet you'll quit.</Txt>
           </View>
-          <Field label="Your name" value={draft} onChangeText={setDraft} placeholder="Alex" autoFocus testID="name-input" onSubmitEditing={save} returnKeyType="done" />
-          <Btn title="Continue" onPress={save} loading={saving} disabled={!draft.trim()} testID="name-submit" />
+          <Field label="Your name" value={draft} onChangeText={setDraft} placeholder="Alex" autoFocus testID="name-input" onSubmitEditing={create} returnKeyType="done" />
+          <Btn title="Continue" onPress={create} loading={saving} disabled={!draft.trim()} testID="name-submit" />
         </View>
       </KeyboardAvoidingView>
     );
   }
 
-  return <MeContext.Provider value={{ ...me, setName }}>{children}</MeContext.Provider>;
+  const setName = async (raw: string) => {
+    const name = raw.trim();
+    if (!name) return;
+    await ensure({ deviceId: active.deviceId, name });
+    const list = accounts.map((a) => (a.deviceId === active.deviceId ? { ...a, name } : a));
+    setAccounts(list);
+    await save(list, active.deviceId);
+  };
+
+  const switchAccount = async (id: string) => {
+    const next = accounts.find((a) => a.deviceId === id);
+    if (!next || id === active.deviceId) return;
+    setActiveId(id);
+    await save(accounts, id);
+    ensure(next).catch(() => {});
+  };
+
+  return (
+    <MeContext.Provider value={{ deviceId: active.deviceId, name: active.name, accounts, setName, switchAccount, addAccount: (n) => addAccount(n) }}>
+      {children}
+    </MeContext.Provider>
+  );
 }

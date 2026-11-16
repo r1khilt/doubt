@@ -1,92 +1,88 @@
-import { internalMutation, mutation, type MutationCtx } from "./_generated/server";
+import { internalMutation, mutation } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
-import type { Doc, Id } from "./_generated/dataModel";
+import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { requireUser } from "./lib";
 
-// Made-up people so the demo looks alive. Seeded challenges settle in-app (sandbox), rows are pre-paid.
-const ME = "@me";
-type Spec = {
-  goal: string; targetSteps: number; stake: number; hours: number;
-  people: [string, number][]; // [name, steps]  (ME = the device that loaded the demo)
-  doubts: [string, string, number, string?][]; // [doubter, target, dollars, trash talk]
-  believes?: [string, string][]; // [believer, target]
-  talk?: [string, string, string?][]; // [author, text, target]
-};
-
-const MAIN: Spec = {
-  goal: "10k steps today", targetSteps: 10000, stake: 20, hours: 1,
-  people: [["Jake", 4200], ["Maya", 10400], ["Ali", 11800], ["Priya", 7900], ["Marcus", 2300], ["Sofia", 9100]],
-  doubts: [
-    ["Sam", "Jake", 10, "jake has never walked 10k in his life"], ["Omar", "Jake", 5, "easy money"],
-    ["Leo", "Maya", 10, "she skipped leg day for a month"], ["Nina", "Marcus", 15, "marcus is on the couch rn i can see him"],
-    ["Zoe", "Sofia", 8], ["Kai", "Priya", 12, "priya's whole personality is brunch"],
-  ],
-  believes: [["Ruby", "Jake"], ["Theo", "Marcus"], ["Iris", "Priya"], ["Owen", "Sofia"], ["Jade", "Sofia"]],
-  talk: [["Jake", "watch me. evening walk incoming", "Jake"], ["Marcus", "2.3k is a warmup. relax", "Marcus"]],
-};
-const MINE: Spec = {
-  goal: "12k steps today", targetSteps: 12000, stake: 20, hours: 6,
-  people: [[ME, 8240], ["Danny", 6100], ["Bianca", 12000]],
-  doubts: [
-    ["Srinitha", "Danny", 15, "danny thinks the fridge counts as cardio"], ["Oskar", ME, 10, "been on the couch since noon. easy money"],
-    ["Kimmy", ME, 10, "you are NOT making it past 8k. i've seen you on a sunday"],
-  ],
-  believes: [["Bea", ME], ["Gabe", ME], ["Sara", ME], ["Olu", ME], ["Kimmy", "Bianca"]],
-  talk: [["Danny", "see you at 12k, buddy", "Danny"]],
-};
-const EXTRA: Spec[] = [
-  { goal: "Weekend 25k steps", targetSteps: 25000, stake: 50, hours: 48,
-    people: [["Ethan", 8200], ["Hana", 14100], ["Diego", 3100], ["Ava", 19800]],
-    doubts: [["Ruby", "Diego", 40, "diego took an uber 2 blocks yesterday"], ["Theo", "Ethan", 25], ["Iris", "Hana", 20]],
-    believes: [["Leo", "Diego"]] },
-];
-
-async function build(ctx: MutationCtx, me: Doc<"users">, s: Spec) {
-  const challengeId = await ctx.db.insert("challenges", {
-    hostId: me._id, goal: s.goal, kind: "steps", targetSteps: s.targetSteps, stakeCents: s.stake * 100, bonusCents: 0,
-    endsAt: Date.now() + s.hours * 3600_000, status: "open", sandbox: true,
-  });
-  await ctx.scheduler.runAt(Date.now() + s.hours * 3600_000, internal.settle.run, { challengeId });
-  const users = new Map<string, Id<"users">>([[ME, me._id]]);
-  const user = async (name: string) => {
-    if (!users.has(name)) users.set(name, await ctx.db.insert("users", { deviceId: `seed-${name}-${challengeId}`, name }));
-    return users.get(name)!;
-  };
-  const pids = new Map<string, Id<"participants">>();
-  for (const [name, progress] of s.people) {
-    const userId = await user(name);
-    const pid = await ctx.db.insert("participants", { challengeId, userId, progress, paid: true, result: "pending" });
-    pids.set(name, pid);
-    await ctx.db.insert("posts", { challengeId, userId, targetId: pid, type: "join" });
-    if (progress >= s.targetSteps) await ctx.db.insert("posts", { challengeId, userId, targetId: pid, type: "finish" });
-  }
-  for (const [bettor, target, dollars, note] of s.doubts) {
-    const bettorId = await user(bettor);
-    const targetId = pids.get(target)!;
-    await ctx.db.insert("bets", { challengeId, bettorId, targetId, amountCents: dollars * 100, paid: true, note });
-    await ctx.db.insert("posts", { challengeId, userId: bettorId, targetId, type: "doubt", amountCents: dollars * 100, text: note });
-  }
-  for (const [believer, target] of s.believes ?? []) {
-    const userId = await user(believer);
-    const participantId = pids.get(target)!;
-    await ctx.db.insert("beliefs", { challengeId, participantId, userId });
-    await ctx.db.insert("posts", { challengeId, userId, targetId: participantId, type: "believe" });
-  }
-  for (const [author, text, target] of s.talk ?? []) {
-    await ctx.db.insert("posts", { challengeId, userId: await user(author), targetId: target ? pids.get(target) : undefined, type: "comment", text });
-  }
-  return challengeId;
-}
+// Demo data that reproduces the "Doubters App Design" UI kit exactly. Seeded challenges settle in-app (sandbox).
+// Settling after you reach 10,000 steps gives the design's results: +$23.75 won, $43.75 sent, Bianca gets $24.75.
+const MIN = 60_000;
+const HOUR = 60 * MIN;
 
 export const demo = mutation({
   args: { deviceId: v.string() },
   handler: async (ctx, { deviceId }) => {
     if (process.env.ALLOW_SEED !== "true") throw new ConvexError("Demo seeding is off (set ALLOW_SEED=true)");
     const me = await requireUser(ctx, deviceId);
-    for (const s of EXTRA) await build(ctx, me, s);
-    await build(ctx, me, MINE); // you're a challenger here, so Home shows your card
-    return build(ctx, me, MAIN); // you're NOT in this one, so you can doubt people (Revyl bet-cap test)
+    const now = Date.now();
+    const run = now.toString(36);
+    const users = new Map<string, Id<"users">>();
+    const user = async (name: string) => {
+      if (!users.has(name)) users.set(name, await ctx.db.insert("users", { deviceId: `seed-${name}-${run}`, name }));
+      return users.get(name)!;
+    };
+
+    // "10k steps today": you vs Danny vs Bianca. 5h 12m left; pace 6,000 so you're "+240 ahead of pace".
+    const endsAt = now + 5 * HOUR + 12 * MIN;
+    const tenK = await ctx.db.insert("challenges", {
+      hostId: me._id, goal: "10k steps today", kind: "steps", targetSteps: 10000, stakeCents: 2000, bonusCents: 0,
+      endsAt, startedAt: endsAt - 13 * HOUR, status: "open", sandbox: true,
+    });
+    await ctx.scheduler.runAt(endsAt, internal.settle.run, { challengeId: tenK });
+    const you = await ctx.db.insert("participants", { challengeId: tenK, userId: me._id, progress: 6240, paid: true, result: "pending" });
+    const danny = await ctx.db.insert("participants", { challengeId: tenK, userId: await user("Danny"), progress: 2100, paid: true, result: "pending" });
+    const bianca = await ctx.db.insert("participants", { challengeId: tenK, userId: await user("Bianca"), progress: 10000, paid: true, result: "pending" });
+
+    const doubt = async (challengeId: Id<"challenges">, name: string, targetId: Id<"participants">, dollars: number, ago: number, note?: string) => {
+      const bettorId = await user(name);
+      await ctx.db.insert("bets", { challengeId, bettorId, targetId, amountCents: dollars * 100, paid: true, note, at: now - ago });
+      await ctx.db.insert("posts", { challengeId, userId: bettorId, targetId, type: "doubt", amountCents: dollars * 100, text: note, at: now - ago });
+    };
+    const believe = async (challengeId: Id<"challenges">, name: string, participantId: Id<"participants">, ago: number) => {
+      const userId = await user(name);
+      await ctx.db.insert("beliefs", { challengeId, participantId, userId });
+      await ctx.db.insert("posts", { challengeId, userId, targetId: participantId, type: "believe", at: now - ago });
+    };
+    const post = async (name: string, targetId: Id<"participants">, type: "comment" | "finish" | "checkin", ago: number, extra: { text?: string; place?: string; activity?: string } = {}) =>
+      ctx.db.insert("posts", { challengeId: tenK, userId: await user(name), targetId, type, at: now - ago, ...extra });
+
+    // On you: Rikhil and Kimmy put $20 on you quitting; 4 believe in you.
+    await doubt(tenK, "Rikhil", you, 10, 40 * MIN);
+    await doubt(tenK, "Kimmy", you, 10, 4 * MIN, "you are NOT making it past 8k. i've seen you on a sunday");
+    for (const [name, ago] of [["Bianca", 7 * HOUR], ["Oskar", 6 * HOUR], ["Srinitha", 5 * HOUR], ["Gabe", 2 * HOUR]] as const) await believe(tenK, name, you, ago);
+
+    // On Danny: 5 doubters ($10 of his $20 cap), 2 believers -> 71% doubt. 12 replies.
+    await believe(tenK, "Srinitha", danny, 3 * HOUR);
+    await doubt(tenK, "Kimmy", danny, 2, 6 * HOUR);
+    await believe(tenK, "Bianca", danny, 5.5 * HOUR);
+    await doubt(tenK, "Rikhil", danny, 2, 4.5 * HOUR);
+    await doubt(tenK, "Maya", danny, 2, 2.5 * HOUR);
+    await post("Danny", danny, "checkin", 2 * HOUR, { place: "Dolores Park", activity: "walk" });
+    await doubt(tenK, "Leo", danny, 1, 90 * MIN);
+    await post("Bianca", bianca, "finish", 1 * HOUR);
+    await post("Rikhil", danny, "comment", 50 * MIN, { text: "2,100 by now is crazy work" });
+    await post("Maya", danny, "comment", 30 * MIN, { text: "danny pls" });
+    await doubt(tenK, "Oskar", danny, 3, 3 * MIN);
+    await post("Oskar", danny, "comment", 2 * MIN, { text: "he's been on the couch since noon. easy money" });
+    await post("Danny", danny, "comment", 1 * MIN, { text: "watch me. evening walk incoming" });
+
+    // "No sugar for 7 days": Bianca on day 5. 2 doubters, 7 believers -> 22% doubt.
+    const sugarStart = now - 4 * 24 * HOUR - 3 * HOUR;
+    const sugar = await ctx.db.insert("challenges", {
+      hostId: await user("Bianca"), goal: "No sugar for 7 days", kind: "custom", targetSteps: 0, stakeCents: 2000, bonusCents: 0,
+      endsAt: sugarStart + 7 * 24 * HOUR, startedAt: sugarStart, status: "open", sandbox: true,
+    });
+    await ctx.scheduler.runAt(sugarStart + 7 * 24 * HOUR, internal.settle.run, { challengeId: sugar });
+    const bSugar = await ctx.db.insert("participants", { challengeId: sugar, userId: await user("Bianca"), progress: 0, paid: true, result: "pending" });
+    await doubt(sugar, "Danny", bSugar, 5, 3 * 24 * HOUR, "she has a whole drawer of sour patch kids");
+    await doubt(sugar, "Kimmy", bSugar, 5, 2 * 24 * HOUR);
+    for (const [i, name] of ["Srinitha", "Oskar", "Gabe", "Maya", "Leo", "Rikhil"].entries()) await believe(sugar, name, bSugar, (4 - i * 0.5) * 24 * HOUR);
+    // You believe in Bianca ("You + 6 believe").
+    await ctx.db.insert("beliefs", { challengeId: sugar, participantId: bSugar, userId: me._id });
+    await ctx.db.insert("posts", { challengeId: sugar, userId: me._id, targetId: bSugar, type: "believe", at: now - 20 * HOUR });
+    await ctx.db.insert("posts", { challengeId: sugar, userId: await user("Bianca"), targetId: bSugar, type: "checkin", text: "made it through a birthday party", at: now - 5 * HOUR });
+
+    return tenK;
   },
 });
 

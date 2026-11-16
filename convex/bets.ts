@@ -12,8 +12,7 @@ export const place = mutation({
     const c = (await ctx.db.get(target.challengeId))!;
     if (c.status !== "open" || c.endsAt <= Date.now()) throw new ConvexError("Betting is closed");
     if (!Number.isInteger(amountCents) || amountCents < 100) throw new ConvexError("Minimum bet is $1");
-    const parts = await ctx.db.query("participants").withIndex("by_challenge", (q) => q.eq("challengeId", c._id)).collect();
-    if (parts.some((p) => p.userId === user._id)) throw new ConvexError("Challengers can't bet in their own challenge");
+    if (target.userId === user._id) throw new ConvexError("You can't doubt yourself");
     const onTarget = await ctx.db.query("bets").withIndex("by_target", (q) => q.eq("targetId", targetId)).collect();
     const used = onTarget.reduce((s, b) => s + b.amountCents, 0);
     const cap = c.stakeCents - used;

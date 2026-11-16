@@ -2,10 +2,10 @@
 
 _meta:
     remote_id: 9728be5f-8161-4f21-b4c1-3eb1b0b051c1
-    remote_version: 1
-    local_version: 1
-    last_synced_at: "2026-11-15T16:50:20-08:00"
-    checksum: ed957d9a8ea6e65125e636991a8dcf47fae2396f5e5454e1011d705fb4406dfd
+    remote_version: 2
+    local_version: 2
+    last_synced_at: "2026-11-15T17:21:39-08:00"
+    checksum: 7f9419902de60262cd012876394ae81602f1abf775d706232ca3d46dd059c532
 test:
     metadata:
         name: create-challenge
@@ -15,6 +15,9 @@ test:
     build:
         name: doubt-ios-preview
     blocks:
+        - type: manual
+          step_type: wait
+          step_description: "4"
         - type: if
           condition: A "Your name" text field is visible.
           then:
@@ -22,14 +25,17 @@ test:
               step_description: Type "Revyl" in the "Your name" field.
             - type: instructions
               step_description: Tap the "Continue" button.
+        - type: manual
+          step_type: wait
+          step_description: "3"
         - type: instructions
-          step_description: Tap the "New challenge" button.
+          step_description: Tap the round "+" button at the bottom center of the screen.
         - type: validation
-          step_description: The "Goal" field contains the text "10k steps today".
+          step_description: The "New challenge" screen shows "Will you hit 10k steps today?".
         - type: instructions
-          step_description: Scroll down if needed and tap the "Stake $20 and open market" button.
+          step_description: Tap the "Stake $20 and open market" button.
         - type: manual
           step_type: wait
           step_description: "3"
         - type: validation
-          step_description: The challenge board is shown with the title "10k steps today", and the text "10k steps" is visible.
+          step_description: The challenge screen for "10k steps today" is shown.

@@ -2,9 +2,9 @@
 
 _meta:
     remote_id: df3f1fca-5b7a-419d-a7e3-89152db80583
-    remote_version: 1
-    local_version: 1
-    last_synced_at: "2026-11-15T16:50:24-08:00"
+    remote_version: 2
+    local_version: 2
+    last_synced_at: "2026-11-15T17:21:43-08:00"
     checksum: 8561caad709107ca9440d1175a25a5a6f4e043804ecfa4601425114784a07073
 test:
     metadata:
@@ -15,6 +15,9 @@ test:
     build:
         name: doubt-ios-preview
     blocks:
+        - type: manual
+          step_type: wait
+          step_description: "4"
         - type: if
           condition: A "Your name" text field is visible.
           then:
@@ -22,21 +25,22 @@ test:
               step_description: Type "Revyl" in the "Your name" field.
             - type: instructions
               step_description: Tap the "Continue" button.
-        - type: instructions
-          step_description: Tap "Load demo".
         - type: manual
           step_type: wait
           step_description: "3"
-        - type: validation
-          step_description: The challenge board titled "10k steps today" is shown with a "Settle now" button.
         - type: instructions
-          step_description: Tap the "Settle now" button.
+          step_description: Scroll to the bottom of the home screen and tap "Load demo".
         - type: manual
           step_type: wait
-          step_description: "5"
+          step_description: "3"
         - type: instructions
-          step_description: Tap the "View results" button.
+          step_description: Tap Danny's card in "Your friends" to open the "10k steps today" challenge.
+        - type: instructions
+          step_description: Scroll down and tap "Settle now".
+        - type: manual
+          step_type: wait
+          step_description: "3"
+        - type: instructions
+          step_description: Tap "View results".
         - type: validation
-          step_description: The screen shows the heading "Results" and the label "Total in".
-        - type: validation
-          step_description: The name "Maya" is visible on the Results screen.
+          step_description: A results screen is shown with the text "Results" and the name "Danny" visible.

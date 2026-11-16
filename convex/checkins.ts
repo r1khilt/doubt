@@ -8,9 +8,9 @@ const REVIEW_MS = 5000; // proof is auto-approved after review
 export const submit = mutation({
   args: {
     deviceId: v.string(), participantId: v.id("participants"), text: v.optional(v.string()),
-    activity: v.optional(v.string()), proofKind: v.optional(v.union(v.literal("photo"), v.literal("video"))),
+    activity: v.optional(v.string()), place: v.optional(v.string()), proofKind: v.optional(v.union(v.literal("photo"), v.literal("video"))),
   },
-  handler: async (ctx, { deviceId, participantId, text, activity, proofKind }) => {
+  handler: async (ctx, { deviceId, participantId, text, activity, place, proofKind }) => {
     const user = await requireUser(ctx, deviceId);
     const p = await ctx.db.get(participantId);
     if (!p || p.userId !== user._id) throw new ConvexError("Not your challenge");
@@ -18,7 +18,7 @@ export const submit = mutation({
     if (c.status !== "open" || Date.now() > c.endsAt) throw new ConvexError("Challenge has ended");
     const postId = await ctx.db.insert("posts", {
       challengeId: c._id, userId: user._id, targetId: participantId, type: proofKind ? "proof" : "checkin",
-      text: text?.trim().slice(0, 280) || undefined, activity, proofKind, status: proofKind ? "review" : undefined,
+      text: text?.trim().slice(0, 280) || undefined, activity, place: place?.trim().slice(0, 80) || undefined, proofKind, status: proofKind ? "review" : undefined,
     });
     if (proofKind) await ctx.scheduler.runAfter(REVIEW_MS, internal.checkins.approve, { postId });
     return postId;

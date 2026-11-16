@@ -10,6 +10,7 @@ export default defineSchema({
     status: v.union(v.literal("open"), v.literal("settling"), v.literal("settled")),
     kind: v.optional(v.union(v.literal("steps"), v.literal("gym"), v.literal("run"), v.literal("custom"))),
     sandbox: v.optional(v.boolean()), // payments/payouts settle in-app instead of through Whop
+    startedAt: v.optional(v.number()), // defaults to _creationTime
   }),
   participants: defineTable({
     challengeId: v.id("challenges"), userId: v.id("users"), progress: v.number(),
@@ -19,7 +20,7 @@ export default defineSchema({
   }).index("by_challenge", ["challengeId"]).index("by_user", ["userId"]),
   bets: defineTable({
     challengeId: v.id("challenges"), bettorId: v.id("users"), targetId: v.id("participants"),
-    amountCents: v.number(), paid: v.boolean(), note: v.optional(v.string()),
+    amountCents: v.number(), paid: v.boolean(), note: v.optional(v.string()), at: v.optional(v.number()),
     purchaseUrl: v.optional(v.string()), paymentId: v.optional(v.string()),
   }).index("by_target", ["targetId"]).index("by_challenge", ["challengeId"]),
   progressLogs: defineTable({
@@ -33,6 +34,7 @@ export default defineSchema({
     text: v.optional(v.string()), amountCents: v.optional(v.number()),
     activity: v.optional(v.string()), proofKind: v.optional(v.union(v.literal("photo"), v.literal("video"))),
     status: v.optional(v.union(v.literal("review"), v.literal("approved"))),
+    place: v.optional(v.string()), at: v.optional(v.number()), // at: display time (defaults to _creationTime)
   }).index("by_challenge", ["challengeId"]),
   beliefs: defineTable({ challengeId: v.id("challenges"), participantId: v.id("participants"), userId: v.id("users") })
     .index("by_participant", ["participantId"]),

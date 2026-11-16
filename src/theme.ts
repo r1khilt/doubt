@@ -15,5 +15,9 @@ export const T = {
 
 // Avatar colors from the design, picked by name.
 const AVATARS = ["#4A4A8C", "#8C6B2F", "#2F6F5E", "#8C5A3B", "#5E6B2F", "#8C3B5E", "#3B6E8C", "#6B3B8C"];
+// Exact colors for the people in the design; everyone else gets a stable hash color.
+const NAMED: Record<string, string> = {
+  Rikhil: "#4A4A8C", Kimmy: "#8C6B2F", Bianca: "#2F6F5E", Oskar: "#8C5A3B", Srinitha: "#5E6B2F", Gabe: "#8C3B5E", Danny: "#6B4A8C",
+};
 export const avatarColor = (name: string) =>
-  AVATARS[[...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % AVATARS.length];
+  NAMED[name] ?? AVATARS[[...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % AVATARS.length];

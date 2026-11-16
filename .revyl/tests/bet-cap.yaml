@@ -2,10 +2,10 @@
 
 _meta:
     remote_id: 1a7391db-fa8d-4ba7-acdd-d9e5508b3c7b
-    remote_version: 1
-    local_version: 1
-    last_synced_at: "2026-11-15T16:50:22-08:00"
-    checksum: 20cfd973036073d80b6f2e17d70af8f3ac767650d302b0a8eb9c4f5d877635f3
+    remote_version: 2
+    local_version: 2
+    last_synced_at: "2026-11-15T17:21:41-08:00"
+    checksum: 2c9980bbaaf03cb74334266ff94261eeea3e1c27744211dfb0deef8d6c775a4b
 test:
     metadata:
         name: bet-cap
@@ -15,6 +15,9 @@ test:
     build:
         name: doubt-ios-preview
     blocks:
+        - type: manual
+          step_type: wait
+          step_description: "4"
         - type: if
           condition: A "Your name" text field is visible.
           then:
@@ -22,20 +25,23 @@ test:
               step_description: Type "Revyl" in the "Your name" field.
             - type: instructions
               step_description: Tap the "Continue" button.
+        - type: manual
+          step_type: wait
+          step_description: "3"
         - type: instructions
-          step_description: Tap "Load demo".
+          step_description: Scroll to the bottom of the home screen and tap "Load demo".
         - type: manual
           step_type: wait
           step_description: "3"
         - type: validation
-          step_description: The challenge board titled "10k steps today" is shown with challengers including Jake, Maya, Ali, Priya, Marcus and Sofia.
+          step_description: The home screen shows "Your friends" with a card for Danny showing "71% doubt".
         - type: instructions
-          step_description: Tap the "Maya" row.
+          step_description: On Danny's card, tap the yellow "Doubt Danny" button.
         - type: validation
-          step_description: A sheet titled "Doubt Maya" with an "Amount ($)" field is visible.
+          step_description: A sheet titled "Doubt Danny" is visible.
         - type: instructions
-          step_description: Type "15" in the "Amount ($)" field.
+          step_description: Enter "15" as the custom doubt amount in the sheet's amount field.
         - type: instructions
-          step_description: tap the yellow "Doubt Maya" button.
+          step_description: Tap the yellow "Doubt Danny" button at the bottom of the sheet.
         - type: validation
-          step_description: The error text "Max bet on Maya is $10" is visible.
+          step_description: The error text "Max bet on Danny is $10" is visible.
