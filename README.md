@@ -71,11 +71,3 @@ Build only what the demo shows. It's an iOS app in Expo Go on real iPhones, with
 | Webhook never arrives on stage | Test the full pay flow 3 times beforehand; keep a screen recording as backup |
 | Transfers fail because the sandbox balance is empty | Pre-fund the sandbox company; failed payouts show a Retry button |
 | Faked steps | The pedometer reads the phone's motion sensor, but the manual button can be abused; turn it off outside the demo |
-
-### Open questions
-
-- [ ] Exact request fields for `POST /checkout_configurations`: an inline price, metadata and redirect_url (check the OpenAPI spec)
-- [ ] For `POST /transfers`: is amount in dollars or cents, and which fields are required (origin, destination, currency)?
-- [ ] How Whop signs webhooks (header names, algorithm) for verification in the Convex HTTP action
-- [ ] Does the hackathon track require the app to run inside a Whop community, or is a standalone app with Whop payments enough?
-- [ ] Should a host be able to join their own challenge
